@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 智能助手</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, sans-serif;
+            background: #000;
+            color: #f5f5f7;
+            display: flex;
+            justify-content: center;
+            padding: 40px;
+        }
+
+        .container {
+            max-width: 800px;
+            width: 100%;
+        }
+
+        h1 {
+            font-size: 32px;
+            font-weight: 600;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 24px;
+            overflow-x: auto;
+            padding-bottom: 4px;
+        }
+
+        .tab-btn {
+            background: #2c2c2e;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 980px;
+            color: #8e8e93;
+            cursor: pointer;
+            font-size: 14px;
+            transition: 0.2s;
+            white-space: nowrap;
+        }
+
+        .tab-btn.active {
+            background: #0071e3;
+            color: #fff;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .card {
+            background: #1c1c1e;
+            border: 1px solid #2c2c2e;
+            border-radius: 18px;
+            padding: 24px;
+        }
+
+        textarea,
+        input[type="text"] {
+            background: #2c2c2e;
+            border: none;
+            border-radius: 12px;
+            padding: 12px 16px;
+            color: #f5f5f7;
+            width: 100%;
+            font-size: 14px;
+            outline: none;
+            font-family: inherit;
+            margin-bottom: 12px;
+            resize: vertical;
+        }
+
+        textarea:focus,
+        input:focus {
+            outline: 2px solid #0071e3;
+        }
+
+        button.primary {
+            background: #0071e3;
+            border: none;
+            border-radius: 12px;
+            padding: 12px 24px;
+            color: #fff;
+            cursor: pointer;
+        }
+
+        button.primary:hover {
+            background: #0077ed;
+        }
+
+        .response-box {
+            background: #2c2c2e;
+            border-radius: 12px;
+            padding: 16px;
+            margin-top: 16px;
+            min-height: 60px;
+            color: #f5f5f7;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .loading {
+            color: #8e8e93;
+            font-style: italic;
+        }
+
+        .drop-zone {
+            border: 2px dashed #3a3a3c;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            color: #8e8e93;
+            cursor: pointer;
+            transition: 0.2s;
+            margin-bottom: 12px;
+        }
+
+        .drop-zone:hover,
+        .drop-zone.dragover {
+            border-color: #0071e3;
+            color: #f5f5f7;
+        }
+
+        #fileName {
+            color: #0071e3;
+            font-weight: 500;
+            margin-top: 8px;
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>✨ AI 智能助手</h1>
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('chat')">💬 聊天</button>
+            <button class="tab-btn" onclick="switchTab('translate')">🌍 翻译</button>
+            <button class="tab-btn" onclick="switchTab('pdf')">📄 总结PDF</button>
+            <button class="tab-btn" onclick="switchTab('write')">✍️ 写作</button>
+        </div>
+
+        <div id="chat" class="tab-content active card">
+            <textarea id="chatInput" rows="3" placeholder="跟 AI 说点什么..." style="height: 80px;"></textarea>
+            <button class="primary" onclick="sendChat()">发送</button>
+            <div id="chatResponse" class="response-box">等待你的提问...</div>
+        </div>
+
+        <div id="translate" class="tab-content card">
+            <textarea id="transInput" rows="4" placeholder="输入要翻译的文本..."></textarea>
+            <input type="text" id="targetLang" placeholder="目标语言，如：中文、英文、日文" value="中文">
+            <button class="primary" onclick="sendTranslate()">翻译</button>
+            <div id="transResponse" class="response-box">等待翻译结果...</div>
+        </div>
+
+        <div id="pdf" class="tab-content card">
+            <div class="drop-zone" id="dropZone">
+                <div>📁 点击选择文件 或 拖拽 PDF 到此处</div>
+                <span id="fileName"></span>
+            </div>
+            <input type="file" id="fileInput" accept=".pdf" style="display:none;">
+            <button class="primary" onclick="uploadPDF()">开始总结</button>
+            <div id="pdfResponse" class="response-box">等待上传 PDF 并总结...</div>
+        </div>
+
+        <div id="write" class="tab-content card">
+            <textarea id="writeInput" rows="4" placeholder="告诉我你想写什么，比如：帮我写一份辞职信，主题是去外企..."></textarea>
+            <button class="primary" onclick="sendWrite()">开始写作</button>
+            <div id="writeResponse" class="response-box">等待 AI 执笔...</div>
+        </div>
+    </div>
+
+    <script>
+        const API = '';
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        async function callAI(endpoint, data, responseId) {
+            const el = document.getElementById(responseId);
+            el.innerHTML = '<div class="loading">思考中，请稍候...</div>';
+            try {
+                const res = await fetch(`${API}${endpoint}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                if (!res.ok) throw new Error('请求失败');
+                const json = await res.json();
+                const key = endpoint === '/api/chat' ? 'reply' : endpoint === '/api/translate' ? 'translation' : endpoint === '/api/write' ? 'content' : 'summary';
+                el.innerHTML = json[key] || '未返回有效内容';
+            } catch (e) {
+                el.innerHTML = `<span style="color:#ff8585;">❌ 错误：${e.message || '请检查 API Key 或网络连接'}</span>`;
+            }
+        }
+
+        function sendChat() {
+            const text = document.getElementById('chatInput').value.trim();
+            if (!text) return alert('请输入内容');
+            callAI('/api/chat', { message: text }, 'chatResponse');
+        }
+
+        function sendTranslate() {
+            const text = document.getElementById('transInput').value.trim();
+            const lang = document.getElementById('targetLang').value.trim();
+            if (!text || !lang) return alert('请填写文本和目标语言');
+            callAI('/api/translate', { text, target_lang: lang }, 'transResponse');
+        }
+
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        let selectedFile = null;
+
+        dropZone.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', (e) => {
+            selectedFile = e.target.files[0];
+            document.getElementById('fileName').innerText = selectedFile ? `✅ 已选择：${selectedFile.name}` : '';
+        });
+
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault(); dropZone.classList.remove('dragover');
+            if (e.dataTransfer.files.length) {
+                selectedFile = e.dataTransfer.files[0];
+                document.getElementById('fileName').innerText = `✅ 已选择：${selectedFile.name}`;
+                fileInput.files = e.dataTransfer.files;
+            }
+        });
+
+        async function uploadPDF() {
+            if (!selectedFile) return alert('请先选择或拖拽一个 PDF 文件');
+            const el = document.getElementById('pdfResponse');
+            el.innerHTML = '<div class="loading">正在解析并总结 PDF，请稍候...</div>';
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+
+            try {
+                const res = await fetch(`${API}/api/summarize`, {
+                    method: 'POST',
+                    body: formData
+                });
+                if (!res.ok) throw new Error('解析失败');
+                const json = await res.json();
+                el.innerHTML = json.summary || '无总结内容';
+            } catch (e) {
+                el.innerHTML = `<span style="color:#ff8585;">❌ 错误：${e.message}</span>`;
+            }
+        }
+
+        function sendWrite() {
+            const text = document.getElementById('writeInput').value.trim();
+            if (!text) return alert('请输入写作主题');
+            callAI('/api/write', { prompt: text }, 'writeResponse');
+        }
+    </script>
+</body>
+
+</html>
