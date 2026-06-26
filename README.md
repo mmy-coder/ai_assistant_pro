@@ -15,9 +15,9 @@
 
 **重要运行说明**：
 1. 本项目使用 DeepSeek API，**无需翻墙**。
-2. 请在 `main.py` 文件头部替换你的 DeepSeek API Key：`DEEPSEEK_API_KEY = "sk-你的密钥"`
+2. 在项目根目录创建 `.env` 文件，写入：`DEEPSEEK_API_KEY=sk-你的密钥`
 
 **启动步骤**：
-1. 安装依赖：`pip install fastapi uvicorn pymysql python-multipart openai PyPDF2`
+1. 安装依赖：`pip install fastapi uvicorn python-multipart openai PyPDF2`
 2. 启动后端：`uvicorn main:app --reload`
 3. 访问：`http://127.0.0.1:8000`

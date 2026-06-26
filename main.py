@@ -1,19 +1,27 @@
 import os
+import io
 import PyPDF2
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
-from typing import Optional
 from openai import OpenAI
+from dotenv import load_dotenv
 
-# ==================== DeepSeek 客户端配置（修改就在这里） ====================
-# 请将下方的密钥替换为你在 platform.deepseek.com 生成的 Key
+# 加载 .env 文件中的环境变量
+load_dotenv()
+
+# ==================== DeepSeek 客户端配置 ====================
+# 请在项目根目录的 .env 文件中设置 DEEPSEEK_API_KEY
+# 前往 platform.deepseek.com 生成你的 API Key
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
+if not DEEPSEEK_API_KEY:
+    raise RuntimeError("未找到 DEEPSEEK_API_KEY，请在 .env 文件中配置")
 
 client = OpenAI(
     api_key=DEEPSEEK_API_KEY,
     base_url="https://api.deepseek.com",  # DeepSeek 的官方 API 地址
+    timeout=60.0,  # API 调用超时时间（秒）
 )
 # ============================================================================
 
@@ -49,6 +57,8 @@ async def ai_chat(req: ChatRequest):
             messages=[{"role": "user", "content": req.message}],
         )
         return {"reply": response.choices[0].message.content}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(500, f"调用失败: {str(e)}")
 
@@ -62,6 +72,8 @@ async def ai_translate(req: TranslateRequest):
             model="deepseek-chat", messages=[{"role": "user", "content": prompt}]
         )
         return {"translation": response.choices[0].message.content}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(500, f"翻译失败: {str(e)}")
 
@@ -71,12 +83,14 @@ async def ai_translate(req: TranslateRequest):
 async def ai_summarize_pdf(file: UploadFile = File(...)):
     try:
         content = await file.read()
-        pdf_reader = PyPDF2.PdfReader(content)
+        pdf_reader = PyPDF2.PdfReader(io.BytesIO(content))
         text = ""
         for page in pdf_reader.pages:
-            text += page.extract_text() or ""
+            page_text = page.extract_text()
+            if page_text:
+                text += page_text
 
-        if len(text) < 10:
+        if len(text.strip()) < 10:
             raise HTTPException(400, "PDF 内容为空或无法解析文字")
 
         text = text[:8000]  # 截断文本防止超出 Token 限制
@@ -86,6 +100,8 @@ async def ai_summarize_pdf(file: UploadFile = File(...)):
             model="deepseek-chat", messages=[{"role": "user", "content": prompt}]
         )
         return {"summary": response.choices[0].message.content}
+    except HTTPException:
+        raise  # 直接透传已知的 HTTP 异常
     except Exception as e:
         raise HTTPException(500, f"PDF解析或总结失败: {str(e)}")
 
@@ -99,6 +115,8 @@ async def ai_write(req: WriteRequest):
             model="deepseek-chat", messages=[{"role": "user", "content": prompt}]
         )
         return {"content": response.choices[0].message.content}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(500, f"写作失败: {str(e)}")
 
